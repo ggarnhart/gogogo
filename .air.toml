@@ -7,7 +7,8 @@ tmp_dir = "tmp"
 [build]
   args_bin = []
   bin = "./tmp/main"
-  cmd = "go build -o ./tmp/main ./cmd/api/main.go"
+  # 1. Added -gcflags to keep the binary debugger-friendly
+  cmd = "go build -gcflags='all=-N -l' -o ./tmp/main ./cmd/api/main.go"
   delay = 1000
   entrypoint = ["./tmp/main"]
   exclude_dir = ["assets", "tmp", "vendor", "testdata"]
@@ -15,11 +16,12 @@ tmp_dir = "tmp"
   exclude_regex = ["_test.go"]
   exclude_unchanged = false
   follow_symlink = false
-  full_bin = ""
+  # 2. Added Delve command to wrap your binary execution
+  full_bin = "dlv exec ./tmp/main --headless=true --listen=:2345 --api-version=2 --accept-multiclient --continue"
   include_dir = ["cmd", "internal"]
   include_ext = ["go", "tpl", "tmpl", "html"]
   include_file = []
-  kill_delay = "0s"
+  kill_delay = "500ms" # Increased slightly to let Delve exit cleanly
   log = "build-errors.log"
   poll = false
   poll_interval = 0

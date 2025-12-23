@@ -10,7 +10,7 @@ import (
 
 func (db *DB) CreateRequest(ctx context.Context, req *models.CreateRequest) error {
 	query := `
-		INSERT INTO requests (ip_addr, request_message)
+		INSERT INTO requests (ip_address, message)
 		VALUES ($1, $2);
 	`
 
