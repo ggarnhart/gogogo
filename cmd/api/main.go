@@ -38,6 +38,7 @@ func main() {
 	r.Get("/health", handlers.HealthHandler)
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Post("/request", requestHandler.CreateRequestHandler)
+		r.Get("/requests", requestHandler.GetRequestsHandler)
 	})
 
 	log.Println("current port", cfg.Port)

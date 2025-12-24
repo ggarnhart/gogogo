@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/ggarnhart/gogogo/internal/database"
 	"github.com/ggarnhart/gogogo/internal/models"
@@ -36,6 +37,28 @@ func (h *RequestHandler) CreateRequestHandler(w http.ResponseWriter, r *http.Req
 	w.WriteHeader(http.StatusCreated)
 }
 
-func GetRequestsHandler(w http.ResponseWriter, r *http.Request) {
+func (h *RequestHandler) GetRequestsHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
+
+	page := 0
+	if v := r.URL.Query().Get("page"); v != "" {
+		if p, err := strconv.Atoi(v); err == nil {
+			if p > 0 {
+				page = p
+			}
+		}
+	}
+
+	response, err := h.db.GetRequests(r.Context(), page)
+
+	if err != nil {
+		// return error
+		w.WriteHeader(http.StatusBadRequest)
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+
+	json.NewEncoder(w).Encode(response)
+
 }
