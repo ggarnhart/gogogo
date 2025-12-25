@@ -1,0 +1,75 @@
+name: Deploy to Staging
+
+on:
+    pull_request:
+        types: [opened, synchronize, reopened]
+
+env:
+    PROJECT_ID: gogogo-prod
+    REGION: us-east4
+    SERVICE_NAME: gogogo-stage
+    ARTIFACT_REGISTRY: us-east4-docker.pkgs.dev
+    REPOSITORY: gogogo
+    IMAGE: api
+
+jobs:
+    deploy:
+        runs-on: ubuntu-latest
+
+        permissions:
+            contents: read
+            id-token: write
+            pull-requests: write
+        
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Authenticate to Google Cloud
+              id: auth
+              uses: google-github-actions/auth@v2
+              with:
+                workload_identity_provider: ${{secrets.WIF_PROVIDER}}
+                service_account: ${{secrets.WIF_SERVICE_ACCOUNT}}
+
+            - name: Set up Cloud SDK
+              uses: google-github-actions/setup-gcloud@v2
+
+            - name: Configure Docker for Artifact Registry
+              run: gcloud auth configure-docker ${{env.ARTIFACT_REGISTRY}}  
+
+            - name: Build and Push Docker Image
+              run: |
+                IMAGE_TAG=${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{github.sha}} \
+                docker build --platform linux/amd64 -t $IMAGE_TAG .
+                docker push $IMAGE_TAG
+
+            - name: Deploy to Cloud Run
+              run: |
+                gcloud run deploy ${{ env.SERVICE_NAME }}
+                  --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{github.sha}} \
+                  --region ${{ env.REGION }} \
+                  --platform managed \
+                  --allow-unauthenticated \
+                  --set-secrets=DATABASE_URL=database-url:latest \
+                  --add-cloudsql-instances=${{ env.PROJECT_ID }}:${{ env.REGION }}:gogogo-db
+            
+            - name: Get Service URL
+              id: get-url
+              run: |
+                URL=$(gcloud run services describe ${{env.SERVICE_NAME}} \
+                  --region ${{env.REGION}} \
+                  --format='value(status.url))'
+                echo "url=$URL" >> $GITHUB_OUTPUT
+
+            - name: Comment on PR
+              uses: actions/github-script@v8
+              with:
+                script: |
+                  github.rest.issues.createComment({
+                    issue_number: context.issue.number,
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    body: `🚀 **Deployed to Stage!**\n\nURL: ${{ steps.get-url.outputs.url }}\n\nCommit: ${{ github.sha }}`
+                  })
+
