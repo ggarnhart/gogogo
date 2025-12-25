@@ -50,6 +50,5 @@ jobs:
             --region ${{ env.REGION }} \
             --platform managed \
             --allow-unauthenticated \
-            --set-env-vars PORT=8080 \
-            --set-secrets=DATABASE_URL=database-url-prod:latest,STRIPE_KEY=stripe-key:latest \
+            --set-secrets=DATABASE_URL=database-url-prod:latest \
             --add-cloudsql-instances=${{ env.PROJECT_ID }}:${{ env.REGION }}:gogogo-db
